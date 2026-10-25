@@ -180,7 +180,31 @@ rover_bridge = RoverBridge()
 @router.on_event("startup")
 async def startup_bridge():
     rover_bridge.loop = asyncio.get_event_loop()
+    # Note: Serial port is opened on-demand to prevent locking the USB port
+    # when users want to connect directly via Web Serial or re-upload firmware.
+
+@router.post("/serial/connect", response_model=dict)
+async def connect_serial():
+    """Explicitly connect the backend serial bridge to Arduino"""
     rover_bridge.start_serial_bridge()
+    return {
+        "status": "connected" if rover_bridge.running else "failed",
+        "port": rover_bridge.serial_port,
+        "hardware_connected": rover_bridge.latest_telemetry["hardware_connected"]
+    }
+
+@router.post("/serial/disconnect", response_model=dict)
+async def disconnect_serial():
+    """Disconnect backend serial bridge to free the port for Web Serial / upload.sh"""
+    if rover_bridge.serial_conn and rover_bridge.serial_conn.is_open:
+        rover_bridge.running = False
+        try:
+            rover_bridge.serial_conn.close()
+        except Exception:
+            pass
+        rover_bridge.serial_conn = None
+        rover_bridge.latest_telemetry["hardware_connected"] = False
+    return {"status": "disconnected"}
 
 @router.websocket("/ws")
 async def websocket_rover_endpoint(websocket: WebSocket):
