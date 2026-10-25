@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AgroBot Mission Control | AI Agricultural Rover Dashboard</title>
+  <meta name="description" content="AI-Powered Agricultural Rover Mission Control & Telemetry Dashboard for remote operation, obstacle detection, GPS tracking, and precision pesticide application.">
+
+  <!-- Google Fonts: Outfit, Inter, JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&family=Outfit:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Core & Component Stylesheets -->
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/components.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- ====================================================================
+         TOP NAVIGATION & MISSION HEADER
+         ==================================================================== -->
+    <header class="top-header">
+      <div class="brand-section">
+        <div class="brand-logo" title="AgroBot AI System">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+          </svg>
+        </div>
+        <div class="brand-title-wrap">
+          <h1 class="brand-title">AGROBOT MISSION CONTROL</h1>
+          <span class="brand-subtitle">AI Agricultural Rover • Embedded Telemetry Cockpit</span>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <!-- Connectivity Mode Selector -->
+        <div class="connection-selector">
+          <label for="connectionModeSelect" style="display:none;">Connection Mode</label>
+          <select id="connectionModeSelect" class="connection-select">
+            <option value="simulator" selected>Digital Twin Simulator</option>
+            <option value="serial">Web Serial USB (Arduino Uno @ 9600)</option>
+            <option value="bluetooth">Web Bluetooth (HC-05 Module)</option>
+            <option value="websocket">FastAPI Gateway (ws://localhost:8000)</option>
+          </select>
+          <button id="btnConnect" class="btn-connect" type="button">Sim Active</button>
+        </div>
+
+        <!-- Heartbeat / Latency Pill -->
+        <div id="heartbeatPill" class="heartbeat-pill">
+          <span class="pulse-dot"></span>
+          <span>PING: <strong id="heartbeatPing">12ms</strong></span>
+        </div>
+
+        <!-- Quick Header E-Stop -->
+        <button id="btnEstopHeader" class="btn-estop-header" type="button" title="Instant Emergency Stop Override">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          E-STOP
+        </button>
+      </div>
+    </header>
+
+    <!-- ====================================================================
+         MAIN VIEWPORT: 3-COLUMN TACTICAL LAYOUT
+         ==================================================================== -->
+    <main class="dashboard-viewport">
+      
+      <!-- ------------------------------------------------------------------
+           COLUMN 1: TELEMETRY & HARDWARE GAUGES
+           ------------------------------------------------------------------ -->
+      <section class="col-telemetry" aria-label="Rover Telemetry">
+        
+        <!-- Safety State Card -->
+        <div class="glass-panel">
+          <div class="panel-header">
+            <h2 class="panel-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+              Safety Status
+            </h2>
+            <span class="panel-badge">FIRMWARE V1.0</span>
+          </div>
+          <div class="panel-body">
+            <div id="stateBanner" class="state-banner disarmed">
+              <div class="state-meta">
+                <span class="state-label">Current State</span>
+                <span id="stateValue" class="state-value">DISARMED</span>
+              </div>
+            </div>
+
+            <div class="system-interlocks">
+              <div class="interlock-badge active">
+                <span class="interlock-indicator"></span>
+                <span>Obstacle Watchdog</span>
+              </div>
+              <div class="interlock-badge active">
+                <span class="interlock-indicator"></span>
+                <span>Comms Timeout (5s)</span>
+              </div>
+              <div class="interlock-badge active">
+                <span class="interlock-indicator"></span>
+                <span>Pump Interlock (D6)</span>
+              </div>
+              <div class="interlock-badge active">
+                <span class="interlock-indicator"></span>
+                <span>Motor Drivers (L298N)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ultrasonic Sonar Proximity Card -->
+        <div class="glass-panel distance-gauge-card">
+          <div class="panel-header">
+            <h2 class="panel-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2a10 10 0 0 1 10 10c0 5.52-4.48 10-10 10S2 17.52 2 12"/>
+                <path d="M12 6a6 6 0 0 1 6 6"/>
+                <circle cx="12" cy="12" r="2"/>
+              </svg>
+              Ultrasonic Sonar (HC-SR04)
+            </h2>
+            <span class="panel-badge">PINS D12/D11</span>
+          </div>
+          <div class="panel-body">
+            <div class="sonar-display">
+              <!-- Radial Sonar Meter Arc -->
+              <div class="sonar-arc-wrap">
+                <svg class="sonar-arc-svg" viewBox="0 0 120 75">
+                  <defs>
+                    <linearGradient id="arc-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stop-color="#ef4444"/>
+                      <stop offset="25%" stop-color="#f59e0b"/>
+                      <stop offset="100%" stop-color="#06b6d4"/>
+                    </linearGradient>
+                  </defs>
+                  <!-- Background Arc (R=50, from 180° to 0°) -->
+                  <path class="arc-bg" d="M 10,65 A 50,50 0 0,1 110,65"/>
+                  <!-- Danger Zone (first 30cm) -->
+                  <path class="arc-danger-zone" d="M 10,65 A 50,50 0 0,1 35,25"/>
+                  <!-- Dynamic Fill Arc -->
+                  <path id="sonarArcFill" class="arc-fill" d="M 10,65 A 50,50 0 0,1 110,65" stroke-dasharray="157" stroke-dashoffset="60"/>
+                </svg>
+                <div class="sonar-icon-center">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M3 12a9 9 0 0 1 9-9"/>
+                    <path d="M21 12a9 9 0 0 1-9 9"/>
+                  </svg>
+                </div>
+              </div>
+
+              <!-- Distance Numerical Readout -->
+              <div class="distance-readout">
+                <div class="distance-number-wrap">
+                  <span id="sonarNumber" class="distance-number">120.0</span>
+                  <span class="distance-unit">cm</span>
+                </div>
+                <div id="sonarStatus" class="distance-status">Path Clear (Sensor Active)</div>
+              </div>
+            </div>
+
+            <!-- Obstacle Distance Simulation Slider -->
+            <div class="distance-slider-wrap">
+              <div class="distance-slider-label">
+                <span>Simulate Obstacle Distance</span>
+                <span>Threshold: &lt; 30 cm</span>
+              </div>
+              <input id="simDistanceSlider" class="sonar-slider" type="range" min="5" max="200" value="120" step="1" aria-label="Simulate obstacle distance">
+            </div>
+          </div>
+        </div>
+
+        <!-- Battery & Pesticide Tank Gauges -->
+        <div class="glass-panel">
+          <div class="panel-header">
+            <h2 class="panel-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="7" width="16" height="10" rx="2" ry="2"/>
+                <line x1="22" y1="11" x2="22" y2="13"/>
+              </svg>
+              Fluid & Power Systems
+            </h2>
+            <span class="panel-badge">12V RELAY</span>
+          </div>
+          <div class="panel-body">
+            <div class="gauges-duo">
+              <!-- Battery Level -->
+              <div class="sub-gauge-box">
+                <div class="sub-gauge-header">
+                  <span class="sub-gauge-title">Battery 12V</span>
+                  <span id="batteryPct" class="sub-gauge-val">98%</span>
+                </div>
+                <div class="progress-track">
+                  <div id="batteryBar" class="progress-fill battery-fill" style="width: 98%;"></div>
+                </div>
+                <div class="sub-gauge-meta">
+                  <span>LiFePO4</span>
+                  <span id="batteryVolt">12.6V</span>
+                </div>
+              </div>
+
+              <!-- Chemical Spray Tank -->
+              <div class="sub-gauge-box">
+                <div class="sub-gauge-header">
+                  <span class="sub-gauge-title">Chemical Tank</span>
+                  <span id="tankLiters" class="sub-gauge-val">92.5 L</span>
+                </div>
+                <div class="progress-track">
+                  <div id="tankBar" class="progress-fill tank-fill" style="width: 92%;"></div>
+                </div>
+                <div class="sub-gauge-meta">
+                  <span>Flow:</span>
+                  <span id="tankFlow">0.0 L/min</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Dual Motor Drivers Tachometer -->
+            <div class="motor-tach-grid">
+              <div class="motor-tach">
+                <div class="motor-tach-name">Motor 1 (D3 Brown / D2 Red)</div>
+                <div id="motorLeftPwm" class="motor-tach-pwm">0 PWM</div>
+              </div>
+              <div class="motor-tach">
+                <div class="motor-tach-name">Motor 2 (D4 White / D5 Black)</div>
+                <div id="motorRightPwm" class="motor-tach-pwm">0 PWM</div>
+              </div>
+            </div>
+
+            <!-- GPS Positioning Subcard -->
+            <div class="gps-info-grid">
+              <div class="gps-cell">
+                <div class="gps-cell-label">Latitude</div>
+                <div id="gpsLat" class="gps-cell-value">28.613939°</div>
+              </div>
+              <div class="gps-cell">
+                <div class="gps-cell-label">Longitude</div>
+                <div id="gpsLon" class="gps-cell-value">77.209021°</div>
+              </div>
+              <div class="gps-cell">
+                <div class="gps-cell-label">GPS Fix Age</div>
+                <div id="gpsAge" class="gps-cell-value">0s</div>
+              </div>
+              <div class="gps-cell">
+                <div class="gps-cell-label">Baud / Satellites</div>
+                <div class="gps-cell-value">9600 / 9 Sat</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ------------------------------------------------------------------
+           COLUMN 2: FIELD RADAR CANVAS & TACTICAL DRIVE STATION
+           ------------------------------------------------------------------ -->
+      <section class="col-drive-station" aria-label="Drive Station and Radar">
+        
+        <!-- Interactive 2D Field Radar Canvas -->
+        <div class="glass-panel" style="flex: 1; display: flex; flex-direction: column;">
+          <div class="panel-header">
+            <h2 class="panel-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/>
+                <line x1="8" y1="2" x2="8" y2="18"/>
+                <line x1="16" y1="6" x2="16" y2="22"/>
+              </svg>
+              Agricultural Field Radar & Simulation
+            </h2>
+            <div class="canvas-overlay-controls">
+              <button id="btnAddObstacle" class="btn-canvas-tool" type="button" title="Add obstacle rock to field">
+                + Obstacle
+              </button>
+              <button id="btnAddWaypoint" class="btn-canvas-tool" type="button" title="Set navigation waypoint">
+                + Waypoint
+              </button>
+              <button id="btnClearSwath" class="btn-canvas-tool" type="button" title="Clear spray swath trail">
+                Clear Trail
+              </button>
+            </div>
+          </div>
+
+          <div class="panel-body" style="flex: 1; padding: 12px; display: flex; flex-direction: column;">
+            <div class="field-canvas-container" style="flex: 1;">
+              <canvas id="fieldRadarCanvas"></canvas>
+              <div class="canvas-telemetry-hud">
+                <div>Drag Obstacles to test <span>Autonomous Stopping</span></div>
+                <div>Spray Swath: <span id="swathAreaDisplay">Active</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tactical Drive Cockpit -->
+        <div class="glass-panel drive-station-panel">
+          <div class="panel-header">
+            <h2 class="panel-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <polygon points="10 8 16 12 10 16 10 8"/>
+              </svg>
+              Rover Drive Station & Actuators
+            </h2>
+            <span class="panel-badge">KEYBOARD: WASD / SPACE</span>
+          </div>
+
+          <div class="panel-body">
+            <div class="drive-controls-row">
+              
+              <!-- System Power & Arming Actions -->
+              <div class="system-actions-col">
+                <button id="btnArm" class="btn-action btn-arm" type="button">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M12 6v6l4 2"/>
+                  </svg>
+                  ARM SYSTEM
+                </button>
+                <button id="btnDisarm" class="btn-action btn-disarm" type="button">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                    <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
+                  </svg>
+                  DISARM
+                </button>
+                <button id="btnPump" class="btn-action btn-pump" type="button">
+                  SPRAY PUMP (D6)
+                </button>
+              </div>
+
+              <!-- Directional D-Pad -->
+              <div class="dpad-container">
+                <div class="dpad-grid">
+                  <div></div>
+                  <button id="btnDpadForward" class="btn-dpad" type="button" aria-label="Drive Forward">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <polyline points="18 15 12 9 6 15"/>
+                    </svg>
+                    <span class="key-hint">W</span>
+                  </button>
+                  <div></div>
+
+                  <button id="btnDpadLeft" class="btn-dpad" type="button" aria-label="Turn Left">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <polyline points="15 18 9 12 15 6"/>
+                    </svg>
+                    <span class="key-hint">A</span>
+                  </button>
+
+                  <button id="btnDpadStop" class="btn-dpad stop-center" type="button" aria-label="Stop Rover">
+                    STOP
+                    <span class="key-hint">SPACE</span>
+                  </button>
+
+                  <button id="btnDpadRight" class="btn-dpad" type="button" aria-label="Turn Right">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <polyline points="9 18 15 12 9 6"/>
+                    </svg>
+                    <span class="key-hint">D</span>
+                  </button>
+
+                  <div></div>
+                  <button id="btnDpadReverse" class="btn-dpad" type="button" aria-label="Drive Reverse">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <polyline points="6 9 12 15 18 9"/>
+                    </svg>
+                    <span class="key-hint">S</span>
+                  </button>
+                  <div></div>
+                </div>
+              </div>
+
+              <!-- Giant Tactile Emergency Stop Button -->
+              <div class="estop-module">
+                <button id="estopGiantBtn" class="estop-giant-btn" type="button" aria-label="Emergency Stop">
+                  <span>STOP</span>
+                </button>
+                <span class="estop-subtext">FAIL-SAFE HALT</span>
+              </div>
+
+            </div>
+
+            <!-- PWM Motor Speed Throttle Slider -->
+            <div class="throttle-strip">
+              <span class="throttle-label">PWM Throttle:</span>
+              <input id="speedSlider" class="throttle-slider" type="range" min="80" max="255" value="180" step="5" aria-label="Motor Speed PWM">
+              <span id="speedValBadge" class="throttle-val-badge">180 PWM</span>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ------------------------------------------------------------------
+           COLUMN 3: AI AGRONOMY & SERIAL CONSOLE
+           ------------------------------------------------------------------ -->
+      <section class="col-ai-terminal" aria-label="AI Agronomy and Terminal">
+        
+        <!-- AI Agronomic Dose Calculator -->
+        <div class="glass-panel">
+          <div class="panel-header">
+            <h2 class="panel-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+              </svg>
+              AI Agronomy & Dose Calculator
+            </h2>
+            <span class="panel-badge">FASTAPI / AI</span>
+          </div>
+
+          <div class="panel-body">
+            <form id="agronomyForm" class="ai-form-group">
+              <div class="form-row">
+                <div>
+                  <label for="cropSelect" class="form-label">Crop Type</label>
+                  <select id="cropSelect" class="form-select">
+                    <option value="wheat">Wheat</option>
+                    <option value="corn" selected>Corn / Maize</option>
+                    <option value="rice">Paddy Rice</option>
+                    <option value="cotton">Cotton</option>
+                    <option value="soybean">Soybean</option>
+                    <option value="tomato">Tomato</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="pestSelect" class="form-label">Target Pest / Weed</label>
+                  <select id="pestSelect" class="form-select">
+                    <option value="aphids" selected>Aphids / Sucking Pests</option>
+                    <option value="armyworm">Fall Armyworm</option>
+                    <option value="broadleaf_weeds">Broadleaf Weeds</option>
+                    <option value="blight">Early / Late Blight</option>
+                    <option value="rust">Rust Fungus</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div>
+                  <label for="pesticideSelect" class="form-label">Chemical Product</label>
+                  <select id="pesticideSelect" class="form-select">
+                    <option value="chlorpyrifos" selected>Chlorpyrifos (Lorsban)</option>
+                    <option value="glyphosate">Glyphosate (Roundup)</option>
+                    <option value="mancozeb">Mancozeb (Dithane)</option>
+                    <option value="imidacloprid">Imidacloprid (Confidor)</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="areaInput" class="form-label">Area (Hectares)</label>
+                  <input id="areaInput" class="form-input" type="number" min="0.1" max="100" step="0.1" value="1.5">
+                </div>
+              </div>
+
+              <div>
+                <label for="tankCapacityInput" class="form-label">Rover Tank Capacity (L)</label>
+                <input id="tankCapacityInput" class="form-input" type="number" min="10" max="1000" step="5" value="100">
+              </div>
+
+              <button class="btn-ai-calculate" type="submit">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                </svg>
+                Calculate AI Dose & Validate
+              </button>
+            </form>
+
+            <!-- Results Card -->
+            <div id="aiResultsCard" class="ai-results-card">
+              <div class="ai-result-row">
+                <span class="ai-result-key">Total Chemical:</span>
+                <span id="resProductAmount" class="ai-result-val">1.13 L</span>
+              </div>
+              <div class="ai-result-row">
+                <span class="ai-result-key">Carrier Water:</span>
+                <span id="resSolutionVolume" class="ai-result-val">300.0 L</span>
+              </div>
+              <div class="ai-result-row">
+                <span class="ai-result-key">Refill Cycles:</span>
+                <span id="resTanksCount" class="ai-result-val">3 tank(s)</span>
+              </div>
+              <div class="ai-result-row">
+                <span class="ai-result-key">Product/Tank:</span>
+                <span id="resProductPerTank" class="ai-result-val">0.38 L/tank</span>
+              </div>
+              <div class="ai-result-row">
+                <span class="ai-result-key">Drift Safety Risk:</span>
+                <span id="resDriftRisk" class="ai-result-val" style="color: #6ee7b7;">Low (&lt; 2.0 bar)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Microclimate Weather & Spray Conditions -->
+        <div class="glass-panel">
+          <div class="panel-header">
+            <h2 class="panel-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>
+              </svg>
+              Microclimate Weather Advisor
+            </h2>
+            <span class="panel-badge">FIELD GPS</span>
+          </div>
+
+          <div class="panel-body weather-card-content">
+            <div class="weather-stats-grid">
+              <div class="weather-stat-box">
+                <span class="weather-stat-label">Temperature</span>
+                <span id="weatherTemp" class="weather-stat-val">24.5°C</span>
+              </div>
+              <div class="weather-stat-box">
+                <span class="weather-stat-label">Wind Speed</span>
+                <span id="weatherWind" class="weather-stat-val">2.8 m/s</span>
+              </div>
+              <div class="weather-stat-box">
+                <span class="weather-stat-label">Humidity</span>
+                <span id="weatherHum" class="weather-stat-val">58%</span>
+              </div>
+            </div>
+
+            <div id="weatherSafetyPill" class="spray-safety-pill safe">
+              Spray Condition: OPTIMAL (Safe wind & temp)
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Serial Console & Packet Terminal -->
+        <div class="glass-panel">
+          <div class="panel-header">
+            <h2 class="panel-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="4 17 10 11 4 5"/>
+                <line x1="12" y1="19" x2="20" y2="19"/>
+              </svg>
+              Serial Telemetry Console
+            </h2>
+            <span class="panel-badge">RAW PROTOCOL</span>
+          </div>
+
+          <div class="panel-body console-box-container">
+            <div id="consoleLog" class="console-log-box" aria-live="polite"></div>
+            
+            <div class="console-input-row">
+              <label for="consoleCmdInput" style="display:none;">Serial Command Input</label>
+              <input id="consoleCmdInput" class="console-input" type="text" placeholder="Send command (e.g. ARM, STATUS, FORWARD)...">
+              <button id="btnConsoleSend" class="btn-console-send" type="button">Send</button>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+    </main>
+
+    <!-- Floating Toast Notifications Container -->
+    <div id="toastContainer" class="toast-container" aria-live="assertive"></div>
+  </div>
+
+  <!-- Main Application Script (ES Module) -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
