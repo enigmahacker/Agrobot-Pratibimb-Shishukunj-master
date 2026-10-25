@@ -65,31 +65,30 @@ Arduino Uno
 │         ▼                        ▼                                 │
 │   [Left Motors]               [Right Motors]                       │
 │                                                                     │
-│        [Ultrasonic Sensor]                                          │
+│        [Ultrasonic Sensor HC-SR04]                                  │
 │        ┌─────────────┐                                              │
-│        │    TRIG     │◄────────── D11                                   │
-│        │    ECHO     │◄────────── D12                                   │
+│        │    TRIG     │◄────────── D12                               │
+│        │    ECHO     │◄────────── D11                               │
 │        └─────────────┘                                              │
 │                                                                     │
-│       [Bluetooth Module]                                            │
+│        [Bluetooth Module HC-05]                                     │
 │        ┌─────────────┐                                              │
-│        │    TXD      │◄────────── D9                                    │
-│        │    RXD      │◄────────── D13                                   │
+│        │    TXD      │◄────────── D10 (Arduino RX)                  │
+│        │    RXD      │◄────────── D9  (Arduino TX)                  │
 │        └─────────────┘                                              │
 │                                                                     │
-│         [GPS Module]                                                │
+│        [GPS Module NEO-6M]                                          │
 │        ┌─────────────┐                                              │
-│        │    TX       │◄────────── D10                                   │
-│        │    RX       │◄────────── D8                                    │
+│        │    TX       │◄────────── D0 (Arduino Default Serial RX)    │
+│        │    RX       │◄────────── D1 (Arduino Default Serial TX)    │
 │        └─────────────┘                                              │
 │                                                                     │
-│         [Relay Module]                                              │
+│        [Relay Module - 12V Pump]                                    │
 │        ┌─────────────┐                                              │
-│        │    IN       │◄────────── D7                                    │
+│        │    IN       │◄────────── D6 (Active LOW)                   │
 │        └─────────────┘                                              │
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
-
 ```
 
 ## Power Supply Requirements

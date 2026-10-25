@@ -46,3 +46,19 @@ class PesticideDoseResult(BaseModel):
     missing_information: List[str]
     warnings: List[str]
     verification_required: bool
+
+class PesticideCalculationRequest(BaseModel):
+    crop: Optional[str] = "Field Crop"
+    pest: Optional[str] = "General"
+    product_name: str
+    formulation: Optional[str] = "Standard"
+    label_rate: float
+    label_units: str
+    treated_area_hectares: float
+    tank_capacity_liters: float = 100.0
+    application_method: Optional[str] = "rover_spray_boom"
+
+class PesticideCalculationResponse(BaseModel):
+    status: str
+    calculation: PesticideDoseResult
+    timestamp: str

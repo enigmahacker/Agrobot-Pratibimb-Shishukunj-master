@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime, timedelta
 from typing import Optional
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import jwt
 from passlib.context import CryptContext
